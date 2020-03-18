@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 15
+VisualStudioVersion = 15.0.28307.960
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "PresenceBot", "PresenceBot\PresenceBot.csproj", "{D3AAF317-E534-4300-B681-D9D1E33B8E90}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D3AAF317-E534-4300-B681-D9D1E33B8E90}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D3AAF317-E534-4300-B681-D9D1E33B8E90}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D3AAF317-E534-4300-B681-D9D1E33B8E90}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D3AAF317-E534-4300-B681-D9D1E33B8E90}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {06839EDA-82C0-468C-929B-55173B2C9765}
+	EndGlobalSection
+EndGlobal
