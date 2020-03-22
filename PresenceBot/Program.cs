@@ -28,7 +28,7 @@ namespace PresenceBot {
 		// Constants
 		private static readonly int TOKEN_INDEX = 0;
 		private static readonly int SECOND_TO_MILISECOND = 1000;
-		private static readonly int MINUTE_TO_SECOND = 1;
+		private static readonly int MINUTE_TO_SECOND = 60;
 
 		// Member fields
 		private DiscordSocketClient discordClient;
@@ -138,31 +138,31 @@ namespace PresenceBot {
 					if (now > beginLunch && now < endLunch) {
 						await generalChannel.SendMessageAsync("Afiyet olsun " + GetEveryoneRole().Mention + "!");       // Bon appetite message
 
-						Console.WriteLine(DateTime.Now + "   " + "Lunch sleep: " + (endLunch - now).Seconds + "s");
+						Console.WriteLine(DateTime.Now + "   " + "Lunch sleep: " + (endLunch - now).TotalMinutes + "mins");
 						Thread.Sleep(endLunch - now);
 						now = DateTime.Now;
 						checkTime = rng.Next(35, 55);
 					}
 
-					Console.WriteLine(DateTime.Now + "   " + "Check on: " + checkTime + "s");
+					Console.WriteLine(DateTime.Now + "   " + "Check on: " + checkTime + "mins");
 					// Add a time check in case time has already passed (possible if bot restarted during work hours)
-					if (checkTime > now.Second) {
+					if (checkTime > now.Minute) {
 						if (!workTime) {
 							await generalChannel.SendMessageAsync("Günaydın " + GetEveryoneRole().Mention + "!");		 // Good morning message
 							workTime = true;
 						}
 
 						// Wait until time and then check presence
-						Console.WriteLine(DateTime.Now + "   " + "Sleep for: " + (checkTime - now.Second) + "s");
-						Thread.Sleep((checkTime - now.Second) * MINUTE_TO_SECOND * SECOND_TO_MILISECOND);
+						Console.WriteLine(DateTime.Now + "   " + "Sleep for: " + (checkTime - now.Minute) + "mins");
+						Thread.Sleep((checkTime - now.Minute) * MINUTE_TO_SECOND * SECOND_TO_MILISECOND);
 						await CheckPresence(DateTime.Now);
 					} else {
 						Console.WriteLine(DateTime.Now + "   " + "Abort check");
 					}
 
 					// Wait until the end of the hour to determine next check time
-					int remain = 60 - DateTime.Now.Second;
-					Console.WriteLine(DateTime.Now + "   " + "Sleep for: " + remain + "s");
+					int remain = 60 - DateTime.Now.Minute;
+					Console.WriteLine(DateTime.Now + "   " + "Sleep for: " + remain + "mins");
 					Thread.Sleep(remain * MINUTE_TO_SECOND * SECOND_TO_MILISECOND);
 				}
 				
@@ -179,7 +179,7 @@ namespace PresenceBot {
 					}
 
 					// Sleep until next hour to check if new day has started
-					int remain = 60 - DateTime.Now.Second;
+					int remain = 60 - DateTime.Now.Minute;
 					Thread.Sleep(remain * MINUTE_TO_SECOND * SECOND_TO_MILISECOND);
 					newDay = DateTime.Now.Day != beginWork.Day;
 				}
@@ -307,7 +307,7 @@ namespace PresenceBot {
 				SocketGuildUser user = GetUser(reaction.UserId);
 				TimeSpan timeDiff = DateTime.Now - reactionCheckMessageTime;
 
-				string newLine = string.Format("\n{0, -20} {1}", user.Nickname ?? user.Username, timeDiff.Seconds > ACCEPTED_DELAY_MINUTES ? "+ " + timeDiff.Seconds + " dk" : string.Empty);
+				string newLine = string.Format("\n{0, -20} {1}", user.Nickname ?? user.Username, timeDiff.Minutes > ACCEPTED_DELAY_MINUTES ? "+ " + timeDiff.Minutes + " dk" : string.Empty);
 
 				// Add user to result list message
 				IUserMessage resultMessage = await GetMessage(LOG_TEXT_ID, reactionResultMessageID);
