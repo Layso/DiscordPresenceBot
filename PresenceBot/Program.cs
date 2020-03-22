@@ -12,18 +12,18 @@ using Discord.WebSocket;
 namespace PresenceBot {
 	class Program {
 		// Discord ID variables, set for your own channel
-		private static readonly ulong ADMIN_ROLE_ID = 0;
-		private static readonly ulong GUILD_ID = 0;
-		private static readonly ulong LOG_TEXT_ID = 0;
-		private static readonly ulong GENERAL_TEXT_ID = 0;
-		private static readonly ulong AFK_VOICE_ID = 0;
+		private static readonly ulong ADMIN_ROLE_ID = 689442668714917899;
+		private static readonly ulong GUILD_ID = 689438602228400240;
+		private static readonly ulong LOG_TEXT_ID = 690497509138628619;
+		private static readonly ulong GENERAL_TEXT_ID = 690498237857136660;
+		private static readonly ulong AFK_VOICE_ID = 690093162710040576;
 
 		// Work hour definitions
 		private static readonly int ACCEPTED_DELAY_MINUTES = 5;
-		private static readonly TimeSpan WORK_START_TIME = new TimeSpan(21, 5, 0);
-		private static readonly TimeSpan WORK_END_TIME = new TimeSpan(21, 7, 0);
-		private static readonly TimeSpan LUNCH_START_TIME = new TimeSpan(21, 5, 0);
-		private static readonly TimeSpan LUNCH_END_TIME = new TimeSpan(21, 5, 30);
+		private static readonly TimeSpan WORK_START_TIME = new TimeSpan(9, 0, 0);
+		private static readonly TimeSpan WORK_END_TIME = new TimeSpan(18, 0, 0);
+		private static readonly TimeSpan LUNCH_START_TIME = new TimeSpan(12, 0, 0);
+		private static readonly TimeSpan LUNCH_END_TIME = new TimeSpan(13, 30, 0);
 
 		// Constants
 		private static readonly int TOKEN_INDEX = 0;
