@@ -63,6 +63,7 @@ namespace PresenceBot {
 			userStartTimes = new Dictionary<ulong, DateTime>();
 
 			
+			discordClient.Log += Log;
 			discordClient.Connected += this.DiscordClient_Connected;
 			discordClient.ReactionAdded += this.DiscordClient_ReactionAdded;
 			discordClient.UserVoiceStateUpdated += this.DiscordClient_UserVoiceStateUpdated;
@@ -90,7 +91,7 @@ namespace PresenceBot {
 
 			/* Not sure if needed */
 			while (generalChannel == null) {
-				Console.WriteLine("generalChannel is null");
+				Console.WriteLine(DateTime.Now + "   " + "generalChannel is null");
 				Thread.Sleep(SECOND_TO_MILISECOND);
 				generalChannel = GetTextChannel(GENERAL_TEXT_ID);
 			} /* Test and remove if not needed */
@@ -119,7 +120,8 @@ namespace PresenceBot {
 					Console.WriteLine("--------------- NEW DAY -----------------");
 					Console.WriteLine(DateTime.Now + "   " + "Work : " + beginWork + " - " + endWork);
 					Console.WriteLine(DateTime.Now + "   " + "Lunch: " + beginLunch + " - " + endLunch);
-
+					Console.WriteLine("---------------         -----------------");
+					
 					// Bot may restart both during or outside work hours, check again to see if it's work time on each start
 					if (firstRun) {
 						workTime = now > beginWork && now < endWork;
@@ -132,37 +134,41 @@ namespace PresenceBot {
 
 				// If in working hours
 				if (now > beginWork && now < endWork) {
-					int checkTime = rng.Next(5, 55);
+					int checkTime = rng.Next(15, 45);
+					Log("RNG = " + checkTime);
 
 					// If it's lunch time sleep for the duration of lunch. Generate specific check time for this time
 					if (now > beginLunch && now < endLunch) {
+						Log("Sending Bon Appetite message");
 						await generalChannel.SendMessageAsync("Afiyet olsun " + GetEveryoneRole().Mention + "!");       // Bon appetite message
-
-						Console.WriteLine(DateTime.Now + "   " + "Lunch sleep: " + (endLunch - now).TotalMinutes + "mins");
+						Log("Lunch Sleep for " + (int)((endLunch - now).TotalMinutes) + "mins");
 						Thread.Sleep(endLunch - now);
 						now = DateTime.Now;
 						checkTime = rng.Next(35, 55);
+						Log("RNG = " + checkTime);
 					}
 
-					Console.WriteLine(DateTime.Now + "   " + "Check on: " + checkTime + "mins");
 					// Add a time check in case time has already passed (possible if bot restarted during work hours)
 					if (checkTime > now.Minute) {
 						if (!workTime) {
+							Log("Sending Bonjour message");
 							await generalChannel.SendMessageAsync("Günaydın " + GetEveryoneRole().Mention + "!");		 // Good morning message
 							workTime = true;
 						}
 
 						// Wait until time and then check presence
-						Console.WriteLine(DateTime.Now + "   " + "Sleep for: " + (checkTime - now.Minute) + "mins");
+						Log("Sleep until time check - " + (checkTime - now.Minute) + "mins");
 						Thread.Sleep((checkTime - now.Minute) * MINUTE_TO_SECOND * SECOND_TO_MILISECOND);
+
+						Log("Calling check function");
 						await CheckPresence(DateTime.Now);
 					} else {
-						Console.WriteLine(DateTime.Now + "   " + "Abort check");
+						Log("Abort check");
 					}
 
 					// Wait until the end of the hour to determine next check time
 					int remain = 60 - DateTime.Now.Minute;
-					Console.WriteLine(DateTime.Now + "   " + "Sleep for: " + remain + "mins");
+					Log("Sleep until next hour - " + remain + "mins");
 					Thread.Sleep(remain * MINUTE_TO_SECOND * SECOND_TO_MILISECOND);
 				}
 				
@@ -170,7 +176,8 @@ namespace PresenceBot {
 				else {
 					// End of work hours
 					if (workTime) {
-						await generalChannel.SendMessageAsync(now.DayOfWeek == DayOfWeek.Friday ? "İyi tatiller!" : "İyi akşamlar " + GetEveryoneRole().Mention + "!");        // Good evening/weekend message
+						Log("Finishing up the day");
+						await generalChannel.SendMessageAsync((now.DayOfWeek == DayOfWeek.Friday ? "İyi tatiller!" : "İyi akşamlar ") + GetEveryoneRole().Mention + "!");        // Good evening/weekend message
 						await FinalizePreviousCheck();
 						await ZReport();
 						reactionCheckMessageID = 0;
@@ -179,6 +186,7 @@ namespace PresenceBot {
 					}
 
 					// Sleep until next hour to check if new day has started
+					Log("Not in working hours, sleep 1 hour");
 					int remain = 60 - DateTime.Now.Minute;
 					Thread.Sleep(remain * MINUTE_TO_SECOND * SECOND_TO_MILISECOND);
 					newDay = DateTime.Now.Day != beginWork.Day;
@@ -192,6 +200,8 @@ namespace PresenceBot {
 				// Bust unattended people by adding them to the end of the list, skip this step if there isn't any previous message
 				if (reactionResultMessageID != 0) {
 					await FinalizePreviousCheck();
+				} else {
+					Log("ERROR::ReactionResultMessageId == 0");
 				}
 
 				// Clearn and re-construct presence list,
@@ -199,65 +209,115 @@ namespace PresenceBot {
 
 				// Post new reaction result message to log channel
 				SocketTextChannel logChannel = GetTextChannel(LOG_TEXT_ID);
+				if (logChannel == null) {
+					Log("ERROR::LogChannel == null");
+				}
+
+				Log("Create new log message");
 				EmbedBuilder logEmbed = new EmbedBuilder();
 				logEmbed.Title = "Aktif Yoklama";															// Embed title ("Active Attendance")
 				logEmbed.Color = Color.Green;
 				logEmbed.Timestamp = time;
 				logEmbed.Description = "**Katılanlar**";                                                    // SubTitle ("Attended People"), bold
-				RestUserMessage newResultMessage = await logChannel.SendMessageAsync("", false, logEmbed.Build());     
-				reactionResultMessageID = newResultMessage.Id;
+				RestUserMessage newResultMessage = await logChannel.SendMessageAsync("", false, logEmbed.Build());
+				Log("New log message sent");
 
+				if (newResultMessage == null) {
+					Log("ERROR::NewResultMessage == null");
+				}
+
+				reactionResultMessageID = newResultMessage.Id;
 				// Post new reaction message to general channel and react to it
 				SocketTextChannel generalChannel = GetTextChannel(GENERAL_TEXT_ID);
+				if (generalChannel == null) {
+					Log("ERROR::GeneralChannel == null");
+				}
+
+				Log("Create new reaction message");
 				EmbedBuilder embedBuilder = new EmbedBuilder();
 				embedBuilder.Title = "Yoklama";                                                             // Title ("Attandance")
 				embedBuilder.Color = Color.Green;
 				embedBuilder.Timestamp = time;
 				RestUserMessage newReactionMessge = await generalChannel.SendMessageAsync(GetEveryoneRole().Mention, false, embedBuilder.Build());
+				Log("New reaction message sent");
+
+				if (newReactionMessge == null) {
+					Log("ERROR::NewRactionMessage == null");
+				}
+
 				reactionCheckMessageID = newReactionMessge.Id;
 				reactionCheckMessageTime = time;
-				await newReactionMessge.AddReactionAsync(new Emoji("👌"));
 
+				Log("Reacting message");
+				await newReactionMessge.AddReactionAsync(new Emoji("👌"));
+				Log("Reacted message");
+
+				
+				Log("-------------------------------------------");
 				foreach(SocketGuildUser user in GetGuildUsers()) {
+					Log("ARR::User -> " + user.Username);
 					if (!user.IsBot && !IsAdmin(user.Id) && !muteList.ContainsKey(user.Id)) {
 						await user.SendMessageAsync(time.Hour.ToString("D2") + ":" + time.Minute.ToString("D2") + " saatindeki yoklamayı kaçırma! " + GetTextChannel(GENERAL_TEXT_ID).Mention);
+						Log("ARR::User -> " + user.Username + " sent");
 					}
 				}
-			} catch {
-				Console.WriteLine("CheckPresence Exception");
+				Log("-------------------------------------------");
+			} catch (Exception e) {
+				Console.WriteLine(DateTime.Now + "   " + "Exception: " + e.Message);
 			}
 		}
 
 
 		private async Task FinalizePreviousCheck() {
-			string bustMessageText = GetBustedList();
-			IUserMessage oldResultMessage = await GetMessage(LOG_TEXT_ID, reactionResultMessageID);
-			IUserMessage oldReactionMessage = await GetMessage(GENERAL_TEXT_ID, reactionCheckMessageID);
+			if (reactionResultMessageID > 0 && reactionCheckMessageID > 0) {
+				string bustMessageText = GetBustedList();
+				IUserMessage oldResultMessage = await GetMessage(LOG_TEXT_ID, reactionResultMessageID);
+				IUserMessage oldReactionMessage = await GetMessage(GENERAL_TEXT_ID, reactionCheckMessageID);
 
-			// Get old log message embed to update the existing text
-			Embed oldResultEmbed = null;
-			foreach (Embed embed in oldResultMessage.Embeds) {
-				oldResultEmbed = embed;
+				if (oldResultMessage == null) {
+					Log("ERROR::ResultMessage == null (" + reactionResultMessageID + ")");
+				}
+
+				if (oldReactionMessage == null) {
+					Log("ERROR::ReactionMessage == null (" + reactionCheckMessageID + ")");
+				}
+
+				// Get old log message embed to update the existing text
+				Embed oldResultEmbed = null;
+				foreach (Embed embed in oldResultMessage.Embeds) {
+					oldResultEmbed = embed;
+				}
+
+				if (oldResultEmbed == null) {
+					Log("ERROR::ResultEmbed == null");
+				}
+
+				// Prepare new embed
+				Log("Prepare result embed");
+				EmbedBuilder updatedResultEmbed = new EmbedBuilder();
+				updatedResultEmbed.Title = "Biten Yoklama";                                                 // Title ("Expired Attendance")
+				updatedResultEmbed.Color = Color.LightOrange;
+				updatedResultEmbed.Timestamp = reactionCheckMessageTime;
+				updatedResultEmbed.Description = oldResultEmbed.Description + bustMessageText;
+				await oldResultMessage.ModifyAsync(msg => msg.Embed = updatedResultEmbed.Build());
+				Log("Result message modified");
+
+				// Also update the title and color of reaction message
+				Log("Prepare reaction embed");
+				EmbedBuilder updatedReactionEmbed = new EmbedBuilder();
+				updatedReactionEmbed.Title = "Biten Yoklama";
+				updatedReactionEmbed.Color = Color.LightOrange;
+				updatedReactionEmbed.Timestamp = reactionCheckMessageTime;
+				await oldReactionMessage.ModifyAsync(msg => msg.Embed = updatedReactionEmbed.Build());
+				Log("Reaction message modified");
+			} else {
+				Log("No previous check");
 			}
-
-			// Prepare new embed
-			EmbedBuilder updatedResultEmbed = new EmbedBuilder();
-			updatedResultEmbed.Title = "Biten Yoklama";                                                 // Title ("Expired Attendance")
-			updatedResultEmbed.Color = Color.LightOrange;
-			updatedResultEmbed.Timestamp = reactionCheckMessageTime;
-			updatedResultEmbed.Description = oldResultEmbed.Description + bustMessageText;
-			await oldResultMessage.ModifyAsync(msg => msg.Embed = updatedResultEmbed.Build());
-
-			// Also update the title and color of reaction message
-			EmbedBuilder updatedReactionEmbed = new EmbedBuilder();
-			updatedReactionEmbed.Title = "Biten Yoklama";
-			updatedReactionEmbed.Color = Color.LightOrange;
-			updatedReactionEmbed.Timestamp = reactionCheckMessageTime;
-			await oldReactionMessage.ModifyAsync(msg => msg.Embed = updatedReactionEmbed.Build());
 		}
 
 
 		private async Task ZReport() {
+			Thread.Sleep(10 * MINUTE_TO_SECOND * SECOND_TO_MILISECOND);
 			StringBuilder builder = new StringBuilder();
 			foreach (var pair in userStartTimes) {
 				SocketGuildUser user = GetUser(pair.Key);
@@ -295,33 +355,66 @@ namespace PresenceBot {
 
 
 		private async Task DiscordClient_ReactionAdded(Discord.Cacheable<Discord.IUserMessage, ulong> message, ISocketMessageChannel channel, SocketReaction reaction) {
-			/*	Validity check to continue:
-				- Reacton must be added to the control message sent by this bot
-				- User must be a valid user (not a bot, not an admin)
-				- User should be online when reaction check message has been sent 
-				- User shouldn't be reacted to the message before */
-			if (message.Id == reactionCheckMessageID && !reaction.User.Value.IsBot && !IsAdmin(reaction.UserId) && userPresence.ContainsKey(reaction.UserId) && !userPresence[reaction.UserId]) {
-				userPresence[reaction.UserId] = true;
+			try {
+				Log("Reaction coming: " + reaction.User.Value.Username);
+				/*	Validity check to continue:
+					- Reacton must be added to the control message sent by this bot
+					- User must be a valid user (not a bot, not an admin)
+					- User should be online when reaction check message has been sent 
+					- User shouldn't be reacted to the message before */
+				if (message.Id == reactionCheckMessageID && !reaction.User.Value.IsBot && !IsAdmin(reaction.UserId) && !userPresence[reaction.UserId]) {
+					Log("Adding to list: " + reaction.User.Value.Username);
+					userPresence[reaction.UserId] = true;
+					Log("Set to true: " + reaction.User.Value.Username);
+					// Prepare the result line for user
+					SocketGuildUser user = GetUser(reaction.UserId);
+					TimeSpan timeDiff = DateTime.Now - reactionCheckMessageTime;
 
-				// Prepare the result line for user
-				SocketGuildUser user = GetUser(reaction.UserId);
-				TimeSpan timeDiff = DateTime.Now - reactionCheckMessageTime;
+					string newLine = string.Format("\n{0, -20} {1}", user.Nickname ?? user.Username, timeDiff.Minutes > ACCEPTED_DELAY_MINUTES ? "+ " + timeDiff.Minutes + " dk" : string.Empty);
 
-				string newLine = string.Format("\n{0, -20} {1}", user.Nickname ?? user.Username, timeDiff.Minutes > ACCEPTED_DELAY_MINUTES ? "+ " + timeDiff.Minutes + " dk" : string.Empty);
+					// Add user to result list message
+					IUserMessage resultMessage = await GetMessage(LOG_TEXT_ID, reactionResultMessageID);
+					Embed oldEmbed = null;
+					EmbedBuilder updatedEmbed = new EmbedBuilder();
+					foreach(Embed embed in resultMessage.Embeds) {
+						oldEmbed = embed;
+					}
 
-				// Add user to result list message
-				IUserMessage resultMessage = await GetMessage(LOG_TEXT_ID, reactionResultMessageID);
-				Embed oldEmbed = null;
-				EmbedBuilder updatedEmbed = new EmbedBuilder();
-				foreach(Embed embed in resultMessage.Embeds) {
-					oldEmbed = embed;
+					if (oldEmbed == null) {
+						Log("ERROR::OldEmbed == null");
+					}
+
+					Log("Prepare new embed");
+					updatedEmbed.Title = oldEmbed.Title;
+					updatedEmbed.Color = oldEmbed.Color;
+					updatedEmbed.Timestamp = oldEmbed.Timestamp;
+					updatedEmbed.Description = oldEmbed.Description + newLine;
+					await resultMessage.ModifyAsync(msg => msg.Embed = updatedEmbed.Build());
+					Log("New embed added");
+				} else {
+					StringBuilder builder = new StringBuilder();
+					builder.Append(reaction.User.Value.Username + " reaction denied. Reason:");
+
+					if (message.Id != reactionCheckMessageID) {
+						builder.Append("\n - Incorrect message");
+					}
+
+					if (reaction.User.Value.IsBot) {
+						builder.Append("\n - User is bot");
+					}
+
+					if (IsAdmin(reaction.UserId)) {
+						builder.Append("\n - User is admin");
+					}
+
+					if (userPresence[reaction.UserId]) {
+						builder.Append("\n - Already reacted");
+					}
+
+					Log(builder.ToString());
 				}
-
-				updatedEmbed.Title = oldEmbed.Title;
-				updatedEmbed.Color = oldEmbed.Color;
-				updatedEmbed.Timestamp = oldEmbed.Timestamp;
-				updatedEmbed.Description = oldEmbed.Description + newLine;
-				await resultMessage.ModifyAsync(msg => msg.Embed = updatedEmbed.Build());
+			} catch (Exception e) {
+				Log("EXCEPTION_HANDLED: " + e.Message);
 			}
 		}
 
@@ -361,6 +454,15 @@ namespace PresenceBot {
 
 
 		// Helper functions
+		private void Log(string message) {
+			Console.WriteLine(DateTime.Now + "   " + message);
+		}
+
+		private Task Log(LogMessage message) {
+			Console.WriteLine("API log - " + message.ToString());
+			return Task.CompletedTask;
+		}
+
 		private SocketTextChannel GetTextChannel(ulong id) {
 			return discordClient.GetGuild(GUILD_ID).GetTextChannel(id);
 		}
@@ -418,7 +520,7 @@ namespace PresenceBot {
 		private void ConstructPresenceList(bool initialState) {
 			userPresence.Clear();
 			foreach (SocketGuildUser user in GetGuildUsers()) {
-				if (!user.IsBot && !user.Status.Equals(UserStatus.Offline) && !IsAdmin(user.Id)) {
+				if (!user.IsBot && !IsAdmin(user.Id)) {
 					userPresence.Add(user.Id, initialState);
 				}
 			}
